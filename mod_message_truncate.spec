@@ -1,0 +1,5 @@
+author: "Tom Quackenbush <tom at madglory.com>"
+category: "data"
+summary: "Filter message body text length"
+home: "https://github.com/madglory/mod_message_truncate/tree/master/"
+url: "git@github.com:madglory/mod_message_truncate.git"
