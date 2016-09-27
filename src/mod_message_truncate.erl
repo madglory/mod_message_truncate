@@ -36,6 +36,7 @@ filterMessageBodyElements([], MessageElements) ->
   MessageElements.
 
 start(_Host, _Opts) ->
+  ?INFO_MSG("Starting Mod mod_message_truncate", [] ),
   ejabberd_hooks:add(filter_packet, global, ?MODULE, on_filter_packet, 0),
   ok.
 
