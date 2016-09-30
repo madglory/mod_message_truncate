@@ -24,7 +24,7 @@ filterMessageText(MessageText) ->
   end.
 
 filterMessageBodyElements([{xmlel, <<"body">>, BodyAttr, [{xmlcdata, MessageText}]} = _H|T], MessageElements) ->
-  FilteredMessageText = filterMessageText(binary:bin_to_list(MessageText)),
+  FilteredMessageText = binary:list_to_bin(filterMessageText(binary:bin_to_list(MessageText))),
   FilteredBody = {xmlel, <<"body">>, BodyAttr, [{xmlcdata, FilteredMessageText}]},
   filterMessageBodyElements(T, lists:append(MessageElements, [FilteredBody]));
 
@@ -37,11 +37,11 @@ filterMessageBodyElements([], MessageElements) ->
 
 start(_Host, _Opts) ->
   ?INFO_MSG("Starting Mod mod_message_truncate", [] ),
-  ejabberd_hooks:add(filter_packet, global, ?MODULE, on_filter_packet, 0),
+  ejabberd_hooks:add(filter_packet, global, ?MODULE, on_filter_packet, 1),
   ok.
 
 stop(_Host) ->
-  ejabberd_hooks:delete(filter_packet, global, ?MODULE, on_filter_packet, 0),
+  ejabberd_hooks:delete(filter_packet, global, ?MODULE, on_filter_packet, 1),
   ok.
 
 on_filter_packet(drop) ->
