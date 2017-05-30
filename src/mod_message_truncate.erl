@@ -3,6 +3,7 @@
 -behaviour(gen_mod).
 
 -include("logger.hrl").
+-include("xmpp.hrl").
 
 -export([
   start/2,
@@ -15,7 +16,8 @@
 -include("ejabberd.hrl").
 
 filterMessageText(MessageText) ->
-  MaxMessageLength = 1000,
+  Length = length(MessageText),
+  MaxMessageLength = 20,
   if
     length(MessageText) > MaxMessageLength ->
       lists:concat([lists:sublist(MessageText, MaxMessageLength - 3), "..."]);
@@ -23,36 +25,37 @@ filterMessageText(MessageText) ->
       MessageText
   end.
 
-filterMessageBodyElements([{xmlel, <<"body">>, BodyAttr, [{xmlcdata, MessageText}]} = _H|T], MessageElements) ->
-  FilteredMessageText = binary:list_to_bin(filterMessageText(binary:bin_to_list(MessageText))),
-  FilteredBody = {xmlel, <<"body">>, BodyAttr, [{xmlcdata, FilteredMessageText}]},
-  filterMessageBodyElements(T, lists:append(MessageElements, [FilteredBody]));
-
-filterMessageBodyElements([H|T], MessageElements) ->
-  % skip this tag, but pass it on as processed
-  filterMessageBodyElements(T, lists:append(MessageElements, [H]));
-
-filterMessageBodyElements([], MessageElements) ->
-  MessageElements.
-
 start(_Host, _Opts) ->
-  ?INFO_MSG("Starting Mod mod_message_truncate", [] ),
+  ?INFO_MSG("Starting mod_message_truncate", [] ),
   ejabberd_hooks:add(filter_packet, global, ?MODULE, on_filter_packet, 1),
   ok.
 
 stop(_Host) ->
+?INFO_MSG("Stopping mod_message_truncate", [] ),
   ejabberd_hooks:delete(filter_packet, global, ?MODULE, on_filter_packet, 1),
   ok.
 
-on_filter_packet(drop) ->
-  drop;
 
-on_filter_packet({_From, _To, {xmlel, <<"message">>, _Attrs, Els} = _Packet} = _Msg) ->
-  FilteredEls = filterMessageBodyElements(Els, []),
-  {_From, _To, {xmlel, <<"message">>, _Attrs, FilteredEls}};
 on_filter_packet(Msg) ->
-  % Handle the generic case (any packet that isn't a message with a body).
-  Msg.
+  Type = xmpp:get_type(Msg),
+  if 
+    (Type == chat) orelse (Type == groupchat)  ->
+      BodyText = xmpp:get_text(Msg#message.body),
+      if
+        (BodyText /= <<>>) ->
+          NewBody = binary:list_to_bin(filterMessageText(binary:bin_to_list(BodyText))),
+          [BodyObject|_] = Msg#message.body,
+          NewBodyObject = setelement(3, BodyObject, NewBody),
+          NewMsg = Msg#message{body = [NewBodyObject]},
+          NewMsg;
+        true ->
+          Msg
+      end;
+    true -> 
+      Msg
+  end.
+
+
 
 mod_opt_type(_) -> [].
 depends(_Host, _Opts) -> [].
